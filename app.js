@@ -32,6 +32,7 @@ document.addEventListener("DOMContentLoaded", function() {
 			trees.forEach(function(el, i){
 				var go = SCG.GO.create("tree", el);
 				el.id = go.id;
+				el.size = go.size;
 				that.go.push(go);
 			});
 
