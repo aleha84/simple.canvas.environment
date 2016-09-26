@@ -96,6 +96,15 @@ document.addEventListener("DOMContentLoaded", function() {
 			goUpdates: {
 				indicies: {},
 				updates: [],
+				removements: [],
+				addRemovements: function(ids){
+					var that = this;
+					ids.forEach(function(el, i){
+						if(that.removements.indexOf(el) == -1){
+							that.removements.push(el);
+						}
+					});
+				},
 				addNew: function(goUpdates){
 					var unprocessed = this.updates.filter(function(el){ return !el.processed;});
 					unprocessed.push.apply(unprocessed, goUpdates);

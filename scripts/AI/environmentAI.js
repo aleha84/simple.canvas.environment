@@ -24,6 +24,9 @@ var environmentAI = {
 						as.go.push(SCG.GO.create("tree", { id: el.id, position: new V2(el.position), stage: 0 } ));
 					});
 					break;
+				case 'remove':
+					as.game.goUpdates.addRemovements(msg.ids);
+					break;
 				default:
 					break;
 			}
@@ -38,6 +41,9 @@ var environmentAI = {
 					self.plantTree= function(positions){
 						self.postMessage({command: 'plantTree', message: { positions: positions } });		
 					};
+					self.remove= function(ids){
+						self.postMessage({command: 'remove', message: { ids, ids } });		
+					};
 					self.updateTrees = function(trees){
 						self.postMessage({command: 'updateTrees', message: { trees: trees } });				
 					};
@@ -51,6 +57,7 @@ var environmentAI = {
 					self.initTreeProperties = function(tree){
 						tree.maxStageDate = tree.stageChangedDate + self.treesStages[tree.stage].growUpPeriod;
 						tree.box = new Box(new V2(tree.position.x - tree.size.x/2, tree.position.y - tree.size.y/2), tree.size);
+						tree.removed = false;
 						self.treesCounter++;
 					}
 
@@ -88,6 +95,7 @@ var environmentAI = {
 						}
 					];
 
+					self.lastTimeRemovedTreesCleanUp = 1;
 					self.treesIndicies = {};
 
 					self.treesCounter = 0;
@@ -110,6 +118,13 @@ var environmentAI = {
 						break;
 					}
 					var timer = task.message.timer;
+
+					var currentHundred = parseInt(timer.totalDays/100);
+					if(currentHundred > self.lastTimeRemovedTreesCleanUp){
+						//debugger;
+						self.lastTimeRemovedTreesCleanUp = currentHundred;
+						self.environment.trees = self.environment.trees.filter(function(el) { return el.removed == undefined || !el.removed; });
+					}
 					var trees = self.environment.trees;
 					var updates = [];
 
@@ -122,6 +137,10 @@ var environmentAI = {
 					for(var i = 0;i<trees.length;i++){
 						var tree = trees[i];
 						self.treesIndicies[tree.id] = i;
+
+						if(tree.removed){
+							continue;
+						}
 
 						var stage = self.treesStages[tree.stage];
 
@@ -166,12 +185,24 @@ var environmentAI = {
 						}
 					}
 
-					if(seedsPositions.length > 0){
+					var removements = []; 
+					
+					if(seedsPositions.length > 0){ // seeding
 						var goodPositions = seedsPositions.map(function(el) {return true;});
+						var waitForRemovement = goodPositions.map(function(el) { return []; });
+
 						for(var j = 0; j<trees.length;j++){
+							if(trees[j].removed) { 
+								continue;
+							}
+							
 							seedsPositions.forEach(function(el,i){
-								if(goodPositions[i]){
+								if(goodPositions[i]){ //replace old trees
 									goodPositions[i] = !trees[j].box.isIntersectsWithBox(el);
+									if(!goodPositions[i] && trees[j].stage == self.treesStages.length-1){
+										goodPositions[i] = true;
+										waitForRemovement[i].push(trees[j].id);
+									}
 								}
 							});
 
@@ -184,6 +215,14 @@ var environmentAI = {
 						var result = [];
 						goodPositions.forEach(function(el,i){
 							if(el){
+								if(waitForRemovement[i].length > 0){
+									waitForRemovement[i].forEach(function(rId, ri){
+										if(removements.indexOf(rId) == -1){
+											removements.push(rId);
+										}
+									})
+								}
+
 								var newTreePosition = seedsPositions[i].center;
 								var newId ="tree" + (++self.treesCounter);
 								result.push({position: newTreePosition, id: newId });
@@ -208,6 +247,14 @@ var environmentAI = {
 
 					if(updates.length > 0){
 						self.updateTrees(updates);
+					}
+
+					if(removements.length > 0){ 
+						removements.forEach(function(id,i){
+							 trees[self.treesIndicies[id]].removed = true;
+						});
+
+						self.remove(removements);
 					}
 					break;
 				default:

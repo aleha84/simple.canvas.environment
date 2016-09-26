@@ -7,6 +7,14 @@ var treeBaseProperties = {
 	initializer: function(that){
 		that.destSourcePosition = new V2(that.stage*45,0);
 	},
+	internalPreUpdate: function(now){
+		var as = SCG.scenes.activeScene;
+		var idIndex = as.game.goUpdates.removements.indexOf(this.id);
+		if(idIndex > -1){
+			this.setDead();
+			as.game.goUpdates.removements.splice(idIndex, 1);
+		}
+	},
 	internalUpdate: function(now){
 		var as = SCG.scenes.activeScene;
 		var updatesIndicies = as.game.goUpdates.indicies[this.id];
